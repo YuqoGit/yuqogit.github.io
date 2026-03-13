@@ -152,7 +152,7 @@
     /* ── Grid ── */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 360px));
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
       justify-content: center;
       gap: 22px;
       padding: 8px 0 56px;
@@ -305,7 +305,7 @@
     @media (max-width: 900px) {
       .inner { padding: 0 24px; }
       .header-title { font-size: 30px; }
-      .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 340px)); gap: 16px; }
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
       .footer-inner { padding: 20px 24px; }
     }
     @media (max-width: 600px) {
