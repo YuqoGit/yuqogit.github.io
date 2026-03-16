@@ -151,11 +151,15 @@
 
     /* ── Grid ── */
     .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-      justify-content: center;
+      display: flex;
       gap: 22px;
       padding: 8px 0 56px;
+      justify-content: center;
+    }
+    .grid .card {
+      flex: 1;
+      max-width: 360px;
+      min-width: 0;
     }
 
     /* ── Card ── */
@@ -210,6 +214,7 @@
     .tag-keyword { background: #ccfbf1; color: #0f766e; }
     .tag-content { background: #d1fae5; color: #065f46; }
     .tag-techseo { background: #ede9fe; color: #6d28d9; }
+    .tag-pdf { background: #fee2e2; color: #b91c1c; }
     .tag-internal {
       font-size: 10px;
       color: #f59e0b;
@@ -305,7 +310,7 @@
     @media (max-width: 900px) {
       .inner { padding: 0 24px; }
       .header-title { font-size: 30px; }
-      .grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .grid .card { max-width: none; }
       .footer-inner { padding: 20px 24px; }
     }
     @media (max-width: 600px) {
@@ -313,7 +318,8 @@
       .header-title { font-size: 24px; }
       .header-subtitle { font-size: 14px; }
       .tab { padding: 13px 18px; font-size: 12px; }
-      .grid { grid-template-columns: minmax(0, 360px); gap: 14px; padding-bottom: 36px; }
+      .grid { flex-direction: column; align-items: center; gap: 14px; padding-bottom: 36px; }
+      .grid .card { max-width: 360px; width: 100%; flex: none; }
       .section-header { padding: 24px 0 8px; }
       .footer-inner { flex-direction: column; gap: 6px; text-align: center; padding: 16px; }
     }
@@ -362,6 +368,9 @@
         </div>
         <div class="tab" onclick="switchTab('techseo', this)">
           <span class="tab-icon">⚙️</span> Tech SEO <span class="tab-count">1</span>
+        </div>
+        <div class="tab" onclick="switchTab('pdf', this)">
+          <span class="tab-icon">📄</span> PDF Tools <span class="tab-count">1</span>
         </div>
       </nav>
     </div>
@@ -545,6 +554,41 @@
             </div>
           </div>
           <a href="https://contentum.app.n8n.cloud/form/bda0136a-0140-4cd5-ab54-9ed662acfc57" class="card-cta" target="_blank" rel="noopener">
+            Open tool <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ── PDF TOOLS ── -->
+  <div class="tab-panel" id="panel-pdf">
+    <div class="inner">
+      <div class="section-header">
+        <div class="section-title">PDF Tools</div>
+        <div class="section-sub">Multilingual document optimisation and translation</div>
+      </div>
+      <main class="grid">
+
+        <div class="card">
+          <div class="card-icon"><img src="transcribing.png" alt=""></div>
+          <div class="card-meta"><span class="card-tag tag-pdf">PDF</span></div>
+          <h2 class="card-title">PDF Translation Optimizer</h2>
+          <p class="card-desc">
+            Paste a Google Drive folder ID containing English source and translated documents.
+            Automatically compares, optimises, and reformats multilingual PDFs — ensuring
+            consistency across all language versions.
+          </p>
+          <div class="card-when">
+            <div class="card-when-label">When to use</div>
+            <div class="card-when-text">
+              After translating documents into multiple languages. Use this to check formatting
+              consistency, optimise layout across language versions, and ensure nothing was
+              lost in translation.
+            </div>
+          </div>
+          <a href="https://contentum.app.n8n.cloud/form/11e322ce-13a2-484f-ac32-35dc84308bcc" class="card-cta" target="_blank" rel="noopener">
             Open tool <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
         </div>
