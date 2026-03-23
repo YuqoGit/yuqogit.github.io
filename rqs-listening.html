@@ -91,6 +91,35 @@
 
     footer { text-align: center; padding: 32px 0; font-size: 12px; color: #94a3b8; }
     footer a { color: #00ba9c; text-decoration: none; }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #0c1120; color: #f1f5f9; }
+      .mention { background: #1a2338; border-color: #2d3a52; }
+      .mention:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      .mention-title a { color: #f1f5f9; }
+      .mention-title a:hover { color: #00e8c0; }
+      .mention-body { color: #94a3b8; }
+      .mention-date { color: #64748b; }
+      .filter-btn { background: #1a2338; border-color: #2d3a52; color: #94a3b8; }
+      .filter-btn:hover { border-color: #00ba9c; color: #00e8c0; }
+      .filter-btn.active { background: #00ba9c; color: white; border-color: #00ba9c; }
+      .badge-high { background: #3b1111; color: #fca5a5; }
+      .badge-medium { background: #3b2a0a; color: #fcd34d; }
+      .badge-low { background: #0d2e16; color: #86efac; }
+      .badge-cat { background: #0c2340; color: #7dd3fc; }
+      .badge-source { background: #1e1340; color: #c4b5fd; }
+      .btn-link { background: #1a2338; border-color: #2d3a52; color: #94a3b8; }
+      .btn-link:hover { border-color: #00ba9c; color: #00e8c0; }
+      .replies-panel { border-top-color: #2d3a52; }
+      .reply-card { background: #0f1a2e; border-color: #2d3a52; }
+      .reply-text { color: #cbd5e1; }
+      .btn-copy { background: #1a2338; border-color: #2d3a52; color: #94a3b8; }
+      .btn-copy:hover { border-color: #00ba9c; color: #00e8c0; }
+      .btn-copy.copied { background: #00ba9c; color: white; }
+      .loading { color: #64748b; }
+      .spinner { border-color: #2d3a52; border-top-color: #00ba9c; }
+      footer { color: #64748b; }
+    }
   </style>
 </head>
 <body>
