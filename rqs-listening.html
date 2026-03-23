@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RQS Listening Feed — Yuqo AI Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Lato', sans-serif; background: #f1f5f9; color: #1e293b; min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, #00ba9c 0%, #00967c 45%, #584aac 100%);
+      color: white; padding: 28px 0;
+    }
+    .inner { max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 24px; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 24px; font-weight: 900; }
+    .header a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 700; }
+    .header a:hover { color: white; }
+
+    /* Filters */
+    .filters { display: flex; gap: 10px; padding: 20px 0 12px; flex-wrap: wrap; align-items: center; }
+    .filter-btn {
+      padding: 7px 16px; border-radius: 20px; border: 1px solid #e2e8f0;
+      background: white; font-size: 12px; font-weight: 700; cursor: pointer;
+      color: #64748b; transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: #00ba9c; color: #00ba9c; }
+    .filter-btn.active { background: #00ba9c; color: white; border-color: #00ba9c; }
+    .stats { margin-left: auto; font-size: 12px; color: #94a3b8; font-weight: 700; }
+
+    /* Mention card */
+    .mention {
+      background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 20px 24px; margin-bottom: 12px;
+      transition: box-shadow 0.2s;
+    }
+    .mention:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .mention-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .badge {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 3px 10px; border-radius: 10px; white-space: nowrap;
+    }
+    .badge-high { background: #fef2f2; color: #dc2626; }
+    .badge-medium { background: #fffbeb; color: #d97706; }
+    .badge-low { background: #f0fdf4; color: #16a34a; }
+    .badge-cat { background: #f0f9ff; color: #0284c7; }
+    .badge-source { background: #f5f3ff; color: #7c3aed; }
+    .mention-date { font-size: 11px; color: #94a3b8; margin-left: auto; white-space: nowrap; }
+    .mention-title { font-size: 15px; font-weight: 900; margin-bottom: 6px; }
+    .mention-title a { color: #1e293b; text-decoration: none; }
+    .mention-title a:hover { color: #00ba9c; }
+    .mention-body { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 14px; max-height: 80px; overflow: hidden; }
+    .mention-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-generate {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      background: linear-gradient(135deg, #00ba9c, #584aac); color: white;
+      font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-generate:hover { opacity: 0.85; }
+    .btn-generate:disabled { opacity: 0.5; cursor: wait; }
+    .btn-link {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: white; color: #64748b; font-size: 12px; font-weight: 700;
+      cursor: pointer; text-decoration: none; transition: all 0.15s;
+    }
+    .btn-link:hover { border-color: #00ba9c; color: #00ba9c; }
+
+    /* Replies panel */
+    .replies-panel { display: none; margin-top: 14px; border-top: 1px solid #f1f5f9; padding-top: 14px; }
+    .replies-panel.open { display: block; }
+    .reply-card {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 8px; position: relative;
+    }
+    .reply-text { font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap; }
+    .btn-copy {
+      position: absolute; top: 10px; right: 10px;
+      padding: 5px 12px; border-radius: 6px; border: 1px solid #e2e8f0;
+      background: white; font-size: 11px; font-weight: 700; color: #64748b;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-copy:hover { border-color: #00ba9c; color: #00ba9c; }
+    .btn-copy.copied { background: #00ba9c; color: white; border-color: #00ba9c; }
+    .reply-meta { font-size: 11px; color: #94a3b8; margin-bottom: 10px; }
+
+    .loading { text-align: center; padding: 60px 0; color: #94a3b8; font-size: 14px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top-color: #00ba9c; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer { text-align: center; padding: 32px 0; font-size: 12px; color: #94a3b8; }
+    footer a { color: #00ba9c; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="inner">
+      <div class="header-row">
+        <h1>RQS Listening Feed</h1>
+        <a href="index.html">&larr; Back to Hub</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner">
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterBy('all', this)">All</button>
+      <button class="filter-btn" onclick="filterBy('high', this)">High Priority</button>
+      <button class="filter-btn" onclick="filterBy('Question', this)">Questions</button>
+      <button class="filter-btn" onclick="filterBy('Complaint', this)">Complaints</button>
+      <button class="filter-btn" onclick="filterBy('Grow Report', this)">Grow Reports</button>
+      <button class="filter-btn" onclick="filterBy('Review', this)">Reviews</button>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div id="feed">
+      <div class="loading"><span class="spinner"></span> Loading mentions...</div>
+    </div>
+  </div>
+
+  <footer><a href="https://www.yuqo.com/">Yuqo</a> — RQS Listening Tool</footer>
+
+  <script>
+    // ── CONFIG ──
+    const SHEET_ID = '1xPeMCSrCJKFr1shpGx_6aq8dtjPxKlAu1Cni2uV13uQ';
+    const SHEET_NAME = 'RQS_Sheet_Template_Sheet1';
+    const API_KEY = ''; // TODO: Add Google Sheets API key for public read
+    const WEBHOOK_URL = 'https://contentum.app.n8n.cloud/webhook/rqs-generate-response';
+
+    let allMentions = [];
+    let currentFilter = 'all';
+
+    // ── LOAD DATA ──
+    async function loadMentions() {
+      try {
+        // Try Google Sheets API (needs API key)
+        // Fallback: use published CSV
+        const url = API_KEY
+          ? `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`
+          : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+
+        const res = await fetch(url);
+
+        if (API_KEY) {
+          const data = await res.json();
+          const rows = data.values || [];
+          if (rows.length < 2) { showEmpty(); return; }
+          const headers = rows[0];
+          allMentions = rows.slice(1).map(r => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = r[i] || '');
+            return obj;
+          });
+        } else {
+          // Parse Google Visualization JSON response
+          const text = await res.text();
+          const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+          const cols = json.table.cols.map(c => c.label);
+          allMentions = json.table.rows.map(r => {
+            const obj = {};
+            cols.forEach((c, i) => obj[c] = (r.c[i] && r.c[i].v) || '');
+            return obj;
+          });
+        }
+
+        // Sort newest first
+        allMentions.reverse();
+        renderFeed();
+      } catch (err) {
+        document.getElementById('feed').innerHTML =
+          `<div class="loading">Failed to load data. Make sure the Google Sheet is shared as "Anyone with the link can view".</div>`;
+        console.error(err);
+      }
+    }
+
+    function showEmpty() {
+      document.getElementById('feed').innerHTML = '<div class="loading">No mentions found yet. Run the daily listener first.</div>';
+    }
+
+    // ── RENDER ──
+    function renderFeed() {
+      const filtered = allMentions.filter(m => {
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'high') return (m.Priority || '').toLowerCase() === 'high';
+        return m.Category === currentFilter;
+      });
+
+      document.getElementById('stats').textContent = `${filtered.length} of ${allMentions.length} mentions`;
+
+      if (filtered.length === 0) {
+        document.getElementById('feed').innerHTML = '<div class="loading">No mentions match this filter.</div>';
+        return;
+      }
+
+      document.getElementById('feed').innerHTML = filtered.map((m, i) => {
+        const priority = (m.Priority || 'low').toLowerCase();
+        const priorityClass = priority === 'high' ? 'badge-high' : priority === 'medium' ? 'badge-medium' : 'badge-low';
+        const body = (m['Post Text'] || '').substring(0, 250);
+        const source = m.Source || m.Subreddit || '';
+
+        return `
+          <div class="mention" data-idx="${i}">
+            <div class="mention-top">
+              <span class="badge ${priorityClass}">${priority}</span>
+              <span class="badge badge-cat">${m.Category || 'Unknown'}</span>
+              <span class="badge badge-source">${source}</span>
+              ${m.Language ? `<span class="badge badge-source">${m.Language}</span>` : ''}
+              <span class="mention-date">${m.Date || ''}</span>
+            </div>
+            <div class="mention-title"><a href="${m.URL}" target="_blank" rel="noopener">${m.Title || '(no title)'}</a></div>
+            <div class="mention-body">${escHtml(body)}${body.length >= 250 ? '...' : ''}</div>
+            <div class="mention-actions">
+              <button class="btn-generate" onclick="generateResponse(${i}, this)">Generate Response</button>
+              <a class="btn-link" href="${m.URL}" target="_blank" rel="noopener">View Post</a>
+            </div>
+            <div class="replies-panel" id="replies-${i}"></div>
+          </div>`;
+      }).join('');
+    }
+
+    function filterBy(f, el) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderFeed();
+    }
+
+    // ── GENERATE RESPONSE ──
+    async function generateResponse(idx, btn) {
+      const m = currentFilter === 'all'
+        ? allMentions[idx]
+        : allMentions.filter(m => {
+            if (currentFilter === 'high') return (m.Priority || '').toLowerCase() === 'high';
+            return currentFilter === 'all' || m.Category === currentFilter;
+          })[idx];
+
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      const panel = document.getElementById(`replies-${idx}`);
+      panel.classList.add('open');
+      panel.innerHTML = '<div class="loading"><span class="spinner"></span> Generating 5 reply options...</div>';
+
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: m.Title || '',
+            post_text: m['Post Text'] || '',
+            category: m.Category || 'Question',
+            subreddit: m.Subreddit || '',
+            url: m.URL || '',
+            id: m.ID || ''
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.comments && data.comments.length) {
+          const meta = `
+            <div class="reply-meta">
+              Priority: <strong>${data.priority || '-'}</strong> &middot;
+              Pain point: <strong>${data.pain_point || '-'}</strong> &middot;
+              SEO impact: <strong>${data.seo_impact || '-'}</strong> &middot;
+              ${data.topic_summary || ''}
+            </div>`;
+
+          panel.innerHTML = meta + data.comments.map((c, ci) => `
+            <div class="reply-card">
+              <div class="reply-text">${escHtml(c.text)}</div>
+              <button class="btn-copy" onclick="copyReply(this, ${idx}, ${ci})">Copy</button>
+            </div>`).join('');
+        } else {
+          panel.innerHTML = '<div class="loading">No replies generated. Check the webhook workflow.</div>';
+        }
+      } catch (err) {
+        panel.innerHTML = `<div class="loading">Error: ${err.message}</div>`;
+        console.error(err);
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Generate Response';
+    }
+
+    function copyReply(btn, mentionIdx, replyIdx) {
+      const text = btn.parentElement.querySelector('.reply-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── INIT ──
+    loadMentions();
+  </script>
+</body>
+</html>

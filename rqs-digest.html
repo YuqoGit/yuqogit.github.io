@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RQS Weekly Digest — Yuqo AI Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Lato', sans-serif; background: #f1f5f9; color: #1e293b; min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, #00ba9c 0%, #00967c 45%, #584aac 100%);
+      color: white; padding: 28px 0;
+    }
+    .inner { max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 24px; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 24px; font-weight: 900; }
+    .header a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 700; }
+    .header a:hover { color: white; }
+
+    .digest-select { padding: 20px 0 12px; display: flex; align-items: center; gap: 12px; }
+    .digest-select label { font-size: 13px; font-weight: 700; color: #64748b; }
+    .digest-select select {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0;
+      font-size: 13px; font-weight: 700; color: #1e293b; background: white; cursor: pointer;
+    }
+
+    /* Stat cards row */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card {
+      background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 20px; text-align: center;
+    }
+    .stat-value { font-size: 32px; font-weight: 900; color: #00ba9c; }
+    .stat-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+    /* Section panels */
+    .panel {
+      background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 24px; margin-bottom: 16px;
+    }
+    .panel-title { font-size: 16px; font-weight: 900; margin-bottom: 14px; }
+    .panel-subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 14px; }
+
+    /* Bar chart */
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; font-weight: 700; min-width: 120px; text-align: right; color: #334155; }
+    .bar-track { flex: 1; height: 24px; background: #f1f5f9; border-radius: 6px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; display: flex; align-items: center; padding: 0 8px; }
+    .bar-count { font-size: 11px; font-weight: 700; color: white; }
+
+    /* Tables */
+    .digest-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .digest-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+    .digest-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    .digest-table tr:hover td { background: #f8fafc; }
+    .digest-table a { color: #0284c7; text-decoration: none; }
+    .digest-table a:hover { text-decoration: underline; }
+
+    /* Tags */
+    .topic-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .topic-tag {
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+      background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd;
+    }
+    .topic-tag .count { color: #94a3b8; margin-left: 4px; }
+
+    .summary-text { font-size: 14px; line-height: 1.7; color: #334155; padding: 8px 0; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    .loading { text-align: center; padding: 60px 0; color: #94a3b8; font-size: 14px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top-color: #00ba9c; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer { text-align: center; padding: 32px 0; font-size: 12px; color: #94a3b8; }
+    footer a { color: #00ba9c; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="inner">
+      <div class="header-row">
+        <h1>RQS Weekly Digest</h1>
+        <a href="index.html">&larr; Back to Hub</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner">
+    <div class="digest-select">
+      <label>Select digest:</label>
+      <select id="digestPicker" onchange="renderDigest(this.value)"></select>
+    </div>
+
+    <div id="digest-content">
+      <div class="loading"><span class="spinner"></span> Loading digest data...</div>
+    </div>
+  </div>
+
+  <footer><a href="https://www.yuqo.com/">Yuqo</a> — RQS Listening Tool</footer>
+
+  <script>
+    const SHEET_ID = '1xPeMCSrCJKFr1shpGx_6aq8dtjPxKlAu1Cni2uV13uQ';
+    const SHEET_NAME = 'RQS_Sheet_Template_Digest';
+
+    let allDigests = [];
+
+    async function loadDigests() {
+      try {
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        const cols = json.table.cols.map(c => c.label);
+        allDigests = json.table.rows.map(r => {
+          const obj = {};
+          cols.forEach((c, i) => obj[c] = (r.c[i] && r.c[i].v) || '');
+          return obj;
+        }).reverse();
+
+        if (allDigests.length === 0) {
+          document.getElementById('digest-content').innerHTML = '<div class="loading">No digests yet. Run the daily listener to generate data.</div>';
+          return;
+        }
+
+        const picker = document.getElementById('digestPicker');
+        picker.innerHTML = allDigests.map((d, i) =>
+          `<option value="${i}">${d.Date || 'Digest ' + (i+1)} — ${d['Total Posts'] || 0} mentions</option>`
+        ).join('');
+
+        renderDigest(0);
+      } catch (err) {
+        document.getElementById('digest-content').innerHTML =
+          `<div class="loading">Failed to load. Share the Google Sheet as "Anyone with the link can view".</div>`;
+        console.error(err);
+      }
+    }
+
+    function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
+
+    function renderDigest(idx) {
+      const d = allDigests[idx];
+      const cats = safeParse(d.Categories) || {};
+      const painPoints = safeParse(d['Pain Points']) || {};
+      const sources = safeParse(d.Sources) || {};
+      const threads = safeParse(d['Top Threads']) || [];
+      const members = safeParse(d['Active Members']) || [];
+      const topics = safeParse(d['Trending Topics']) || [];
+      const total = Number(d['Total Posts']) || 0;
+
+      const catColors = { 'Question': '#0284c7', 'Complaint': '#dc2626', 'Grow Report': '#16a34a', 'Review': '#d97706' };
+      const maxCat = Math.max(...Object.values(cats), 1);
+      const maxSource = Math.max(...Object.values(sources), 1);
+
+      document.getElementById('digest-content').innerHTML = `
+        <div class="summary-text">${escHtml(d.Summary || '')}</div>
+
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Mentions</div></div>
+          <div class="stat-card"><div class="stat-value">${cats['Question'] || 0}</div><div class="stat-label">Questions</div></div>
+          <div class="stat-card"><div class="stat-value">${cats['Complaint'] || 0}</div><div class="stat-label">Complaints</div></div>
+          <div class="stat-card"><div class="stat-value">${cats['Grow Report'] || 0}</div><div class="stat-label">Grow Reports</div></div>
+          <div class="stat-card"><div class="stat-value">${cats['Review'] || 0}</div><div class="stat-label">Reviews</div></div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title">Categories</div>
+            ${Object.entries(cats).map(([k, v]) => `
+              <div class="bar-row">
+                <div class="bar-label">${k}</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${(v/maxCat*100)}%; background:${catColors[k] || '#64748b'}">
+                    <span class="bar-count">${v}</span>
+                  </div>
+                </div>
+              </div>`).join('')}
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Sources</div>
+            ${Object.entries(sources).map(([k, v]) => `
+              <div class="bar-row">
+                <div class="bar-label">${k}</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${(v/maxSource*100)}%; background:#7c3aed">
+                    <span class="bar-count">${v}</span>
+                  </div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Top Threads</div>
+          <table class="digest-table">
+            <thead><tr><th>Title</th><th>Source</th><th>Category</th><th>Confidence</th></tr></thead>
+            <tbody>
+              ${threads.map(t => `
+                <tr>
+                  <td><a href="${t.url}" target="_blank" rel="noopener">${escHtml(t.title || '(no title)')}</a></td>
+                  <td>${escHtml(t.subreddit || '')}</td>
+                  <td>${escHtml(t.category || '')}</td>
+                  <td>${t.confidence || '-'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title">Most Active Members</div>
+            <table class="digest-table">
+              <thead><tr><th>User</th><th>Posts</th></tr></thead>
+              <tbody>
+                ${members.map(m => `<tr><td>${escHtml(m.name || '')}</td><td>${m.posts || 0}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Trending Topics</div>
+            <div class="topic-tags">
+              ${topics.map(t => `<span class="topic-tag">${escHtml(t.topic)}<span class="count">(${t.mentions})</span></span>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadDigests();
+  </script>
+</body>
+</html>
