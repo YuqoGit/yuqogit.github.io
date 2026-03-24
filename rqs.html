@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RQS Community Listening — Powered by Yuqo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Lato', sans-serif; background: #f1f5f9; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
+
+    .header {
+      background: linear-gradient(135deg, #00ba9c 0%, #00967c 45%, #584aac 100%);
+      color: white; padding: 40px 0;
+    }
+    .inner { max-width: 960px; margin: 0 auto; width: 100%; padding: 0 24px; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .logo { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.05em; }
+    .header-badge {
+      font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 20px;
+      padding: 5px 13px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: rgba(255,255,255,0.85);
+    }
+    .header-body { text-align: center; }
+    .header-title { font-size: 34px; font-weight: 900; line-height: 1.2; margin-bottom: 10px; }
+    .header-subtitle { font-size: 15px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 520px; margin: 0 auto; }
+
+    .grid { display: flex; gap: 22px; padding: 36px 0 56px; justify-content: center; }
+    .card {
+      flex: 1; max-width: 440px; background: white; border: 1px solid #e2e8f0;
+      border-radius: 18px; padding: 28px; display: flex; flex-direction: column;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover { box-shadow: 0 10px 36px rgba(0, 186, 156, 0.15); transform: translateY(-3px); }
+    .card-icon {
+      width: 54px; height: 54px; border-radius: 14px;
+      background: linear-gradient(135deg, #e8f8f5, #f3f0ff);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; margin-bottom: 18px;
+    }
+    .card-tag {
+      display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 3px 10px; border-radius: 8px;
+      background: #0d2e28; color: #5eead4; margin-bottom: 12px;
+    }
+    .card-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+    .card-desc { font-size: 13px; color: #64748b; line-height: 1.7; margin-bottom: 16px; flex: 1; }
+    .card-when { background: #f8fafc; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+    .card-when-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 4px; }
+    .card-when-text { font-size: 12px; color: #64748b; line-height: 1.6; }
+    .card-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 12px 20px; border-radius: 10px;
+      background: linear-gradient(135deg, #00ba9c, #584aac);
+      color: white; font-size: 13px; font-weight: 700;
+      text-decoration: none; transition: opacity 0.15s; align-self: flex-start;
+    }
+    .card-cta:hover { opacity: 0.85; }
+    .card-cta svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    footer { margin-top: auto; text-align: center; padding: 24px 0; font-size: 11px; color: #94a3b8; }
+    footer a { color: #00ba9c; text-decoration: none; }
+
+    @media (max-width: 700px) { .grid { flex-direction: column; align-items: center; } .card { max-width: 100%; } }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #0c1120; color: #f1f5f9; }
+      .card { background: #1a2338; border-color: #2d3a52; }
+      .card-title { color: #f1f5f9; }
+      .card-desc { color: #94a3b8; }
+      .card-icon { background: #0d2420; }
+      .card-when { background: #0d1f1a; }
+      .card-when-text { color: #cbd5e1; }
+      .card-tag { background: #0d2e28; color: #5eead4; }
+      footer { color: #64748b; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="inner">
+      <div class="header-top">
+        <div class="logo">Powered by Yuqo</div>
+        <div class="header-badge">Community Intelligence</div>
+      </div>
+      <div class="header-body">
+        <h1 class="header-title">RQS Community Listening</h1>
+        <p class="header-subtitle">
+          Monitor Reddit, forums, and the web for Royal Queen Seeds mentions.
+          Review posts, generate reply drafts, and track weekly trends.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner">
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-icon">📡</div>
+        <span class="card-tag">Daily</span>
+        <h2 class="card-title">Listening Feed</h2>
+        <p class="card-desc">
+          Live feed of RQS mentions across Reddit, Discourse forums, and web monitoring.
+          Each post is classified by AI as a Question, Complaint, Grow Report, or Review,
+          with priority and language tags. Click "Generate Response" to get 5 reply drafts
+          you can copy and post.
+        </p>
+        <div class="card-when">
+          <div class="card-when-label">When to use</div>
+          <div class="card-when-text">
+            Every morning to review new mentions, triage by priority,
+            and draft responses for community engagement.
+          </div>
+        </div>
+        <a href="rqs-listening.html" class="card-cta">
+          Open feed <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <span class="card-tag">Weekly</span>
+        <h2 class="card-title">Weekly Digest</h2>
+        <p class="card-desc">
+          Weekly intelligence report with category breakdowns, source analysis,
+          trending topics, top threads, and most active community members.
+          Spot patterns in complaints, track sentiment shifts, and identify brand advocates.
+        </p>
+        <div class="card-when">
+          <div class="card-when-label">When to use</div>
+          <div class="card-when-text">
+            Weekly review meetings. Report on community sentiment,
+            identify recurring issues, and track brand health over time.
+          </div>
+        </div>
+        <a href="rqs-digest.html" class="card-cta">
+          Open digest <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>Powered by <a href="https://www.yuqo.com/">Yuqo</a></footer>
+
+</body>
+</html>
