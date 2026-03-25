@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RQS Weekly Digest — Yuqo AI Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Lato', sans-serif; background: #f1f5f9; color: #1e293b; min-height: 100vh; }
@@ -298,11 +299,149 @@
           </div>`).join('')}
         </div>
         ` : ''}
+
+        <div class="panel" style="margin-top:24px">
+          <div class="panel-title">Awario Brand Intelligence (30 days)</div>
+          <div class="panel-subtitle">Data from Awario social listening platform</div>
+          <div class="two-col" style="margin-top:14px">
+            <div><canvas id="chart-mentions-ts" height="200"></canvas></div>
+            <div><canvas id="chart-sentiment-ts" height="200"></canvas></div>
+          </div>
+          <div class="two-col" style="margin-top:14px">
+            <div><canvas id="chart-sources" height="200"></canvas></div>
+            <div><canvas id="chart-countries" height="200"></canvas></div>
+          </div>
+          <div class="two-col" style="margin-top:14px">
+            <div><canvas id="chart-languages" height="200"></canvas></div>
+            <div>
+              <div class="panel-title" style="font-size:14px;margin-bottom:8px">Topic Cloud</div>
+              <div class="topic-tags" id="awario-topics"></div>
+            </div>
+          </div>
+        </div>
       `;
+
+      // Render Awario charts
+      renderAwarioCharts(safeParse(d['Awario Insights']) || {});
     }
 
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── AWARIO CHARTS ──
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const chartText = isDark ? '#cbd5e1' : '#64748b';
+    const chartGrid = isDark ? '#2d3a52' : '#e2e8f0';
+    const chartDefaults = {
+      responsive: true,
+      plugins: { legend: { labels: { color: chartText, font: { family: 'Lato', size: 11 } } } },
+      scales: {
+        x: { ticks: { color: chartText, font: { size: 10 } }, grid: { color: chartGrid } },
+        y: { ticks: { color: chartText, font: { size: 10 } }, grid: { color: chartGrid } }
+      }
+    };
+
+    function renderAwarioCharts(insights) {
+      if (!insights || Object.keys(insights).length === 0) {
+        document.querySelectorAll('canvas').forEach(c => {
+          c.parentElement.innerHTML = '<div style="color:#94a3b8;font-size:12px;text-align:center;padding:20px">No Awario insights data yet. Run the daily listener to populate.</div>';
+        });
+        return;
+      }
+
+      // Mentions over time
+      const tsMentions = insights.ts_mentions;
+      if (tsMentions && tsMentions.value) {
+        const vals = Array.isArray(tsMentions.value) ? tsMentions.value : [tsMentions.value];
+        const labels = vals.map(v => {
+          const d = new Date(v.start_date || v.date || 0);
+          return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        });
+        const data = vals.map(v => v.mentions || v.value || 0);
+        new Chart(document.getElementById('chart-mentions-ts'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{ label: 'Mentions', data, borderColor: '#0284c7', backgroundColor: 'rgba(2,132,199,0.1)', fill: true, tension: 0.3 }]
+          },
+          options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, title: { display: true, text: 'Mentions Over Time', color: chartText, font: { family: 'Lato', size: 13, weight: 'bold' } } } }
+        });
+      }
+
+      // Sentiment over time
+      const tsSentiment = insights.ts_sentiment;
+      if (tsSentiment && tsSentiment.value) {
+        const vals = Array.isArray(tsSentiment.value) ? tsSentiment.value : [tsSentiment.value];
+        const labels = vals.map(v => {
+          const d = new Date(v.start_date || v.date || 0);
+          return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        });
+        new Chart(document.getElementById('chart-sentiment-ts'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Positive', data: vals.map(v => v.positive || 0), backgroundColor: '#16a34a' },
+              { label: 'Neutral', data: vals.map(v => v.neutral || 0), backgroundColor: '#94a3b8' },
+              { label: 'Negative', data: vals.map(v => v.negative || 0), backgroundColor: '#dc2626' }
+            ]
+          },
+          options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, stacked: true }, y: { ...chartDefaults.scales.y, stacked: true } }, plugins: { ...chartDefaults.plugins, title: { display: true, text: 'Sentiment Over Time', color: chartText, font: { family: 'Lato', size: 13, weight: 'bold' } } } }
+        });
+      }
+
+      // Sources donut
+      const totalSources = insights.total_sources;
+      if (totalSources && totalSources.value) {
+        const v = totalSources.value;
+        const labels = Object.keys(v).map(k => k.charAt(0).toUpperCase() + k.slice(1).replace('-', ' & '));
+        const data = Object.values(v);
+        const colors = ['#0284c7', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#64748b'];
+        new Chart(document.getElementById('chart-sources'), {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }] },
+          options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: chartText, font: { family: 'Lato', size: 11 } } }, title: { display: true, text: 'Mentions by Source', color: chartText, font: { family: 'Lato', size: 13, weight: 'bold' } } } }
+        });
+      }
+
+      // Countries bar
+      const totalCountries = insights.total_countries;
+      if (totalCountries && totalCountries.value) {
+        const entries = Object.entries(totalCountries.value).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        new Chart(document.getElementById('chart-countries'), {
+          type: 'bar',
+          data: {
+            labels: entries.map(e => e[0].toUpperCase()),
+            datasets: [{ label: 'Mentions', data: entries.map(e => e[1]), backgroundColor: '#00ba9c' }]
+          },
+          options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false }, title: { display: true, text: 'Top Countries', color: chartText, font: { family: 'Lato', size: 13, weight: 'bold' } } } }
+        });
+      }
+
+      // Languages bar
+      const totalLangs = insights.total_languages;
+      if (totalLangs && totalLangs.value) {
+        const entries = Object.entries(totalLangs.value).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        new Chart(document.getElementById('chart-languages'), {
+          type: 'bar',
+          data: {
+            labels: entries.map(e => e[0].charAt(0).toUpperCase() + e[0].slice(1)),
+            datasets: [{ label: 'Mentions', data: entries.map(e => e[1]), backgroundColor: '#d97706' }]
+          },
+          options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false }, title: { display: true, text: 'Top Languages', color: chartText, font: { family: 'Lato', size: 13, weight: 'bold' } } } }
+        });
+      }
+
+      // Topic cloud
+      const topicCloud = insights.total_topic_cloud;
+      const topicsEl = document.getElementById('awario-topics');
+      if (topicCloud && topicCloud.value && topicsEl) {
+        const topics = Array.isArray(topicCloud.value) ? topicCloud.value : [];
+        topicsEl.innerHTML = topics.slice(0, 30).map(t =>
+          `<span class="topic-tag">${escHtml(t.topic || t.word || t.text || '')}<span class="count">(${t.score || t.count || t.mentions || ''})</span></span>`
+        ).join('');
+      }
     }
 
     loadDigests();

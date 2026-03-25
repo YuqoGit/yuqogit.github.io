@@ -47,6 +47,10 @@
     .badge-low { background: #f0fdf4; color: #16a34a; }
     .badge-cat { background: #f0f9ff; color: #0284c7; }
     .badge-source { background: #f5f3ff; color: #7c3aed; }
+    .badge-positive { background: #f0fdf4; color: #16a34a; }
+    .badge-negative { background: #fef2f2; color: #dc2626; }
+    .badge-neutral { background: #f8fafc; color: #94a3b8; }
+    .badge-reach { background: #f8fafc; color: #64748b; font-weight: 400; }
     .mention-date { font-size: 11px; color: #94a3b8; margin-left: auto; white-space: nowrap; }
     .mention-title { font-size: 15px; font-weight: 900; margin-bottom: 6px; }
     .mention-title a { color: #1e293b; text-decoration: none; }
@@ -126,6 +130,10 @@
       .badge-low { background: #0d2e16; color: #86efac; }
       .badge-cat { background: #0c2340; color: #7dd3fc; }
       .badge-source { background: #1e1340; color: #c4b5fd; }
+      .badge-positive { background: #0d2e16; color: #86efac; }
+      .badge-negative { background: #3b1111; color: #fca5a5; }
+      .badge-neutral { background: #1a2338; color: #64748b; }
+      .badge-reach { background: #1a2338; color: #64748b; }
       .btn-link { background: #1a2338; border-color: #2d3a52; color: #94a3b8; }
       .btn-link:hover { border-color: #00ba9c; color: #00e8c0; }
       .replies-panel { border-top-color: #2d3a52; }
@@ -329,6 +337,8 @@
               <span class="badge badge-cat">${m.Category || 'Unknown'}</span>
               <span class="badge badge-source">${sourceLabel}</span>
               ${lang ? `<span class="badge badge-source">${lang.toUpperCase()}</span>` : ''}
+              ${m.Sentiment && m.Sentiment !== 'null' ? `<span class="badge badge-${m.Sentiment.toLowerCase() === 'positive' ? 'positive' : m.Sentiment.toLowerCase() === 'negative' ? 'negative' : 'neutral'}">${m.Sentiment}</span>` : ''}
+              ${m.Reach && Number(m.Reach) > 0 ? `<span class="badge badge-reach">&#128065; ${Number(m.Reach).toLocaleString()}</span>` : ''}
               <span class="mention-date">${m.Date || ''}</span>
             </div>
             <div class="mention-title"><a href="${m.URL}" target="_blank" rel="noopener">${m.Title || '(no title)'}</a></div>
