@@ -140,9 +140,17 @@
         const cols = json.table.cols.map(c => c.label);
         allDigests = json.table.rows.map(r => {
           const obj = {};
-          cols.forEach((c, i) => obj[c] = (r.c[i] && r.c[i].v) || '');
+          cols.forEach((c, i) => {
+            let val = (r.c[i] && r.c[i].v) || '';
+            if (typeof val === 'string' && val.startsWith('Date(')) {
+              const parts = val.replace('Date(', '').replace(')', '').split(',').map(Number);
+              const d = new Date(parts[0], parts[1], parts[2], parts[3] || 0, parts[4] || 0, parts[5] || 0);
+              val = d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour12: false });
+            }
+            obj[c] = val;
+          });
           return obj;
-        }).reverse();
+        }).filter(d => d.Date || d['Total Posts']).reverse();
 
         if (allDigests.length === 0) {
           document.getElementById('digest-content').innerHTML = '<div class="loading">No digests yet. Run the daily listener to generate data.</div>';
