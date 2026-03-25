@@ -166,6 +166,24 @@
     let allMentions = [];
     let currentFilter = 'all';
 
+    // ── RESPONSE CACHE (localStorage) ──
+    function getResponseCache() {
+      try { return JSON.parse(localStorage.getItem('rqs_responses') || '{}'); } catch { return {}; }
+    }
+    function saveResponse(postId, data) {
+      const cache = getResponseCache();
+      cache[postId] = { data, timestamp: Date.now() };
+      localStorage.setItem('rqs_responses', JSON.stringify(cache));
+    }
+    function getCachedResponse(postId) {
+      const cache = getResponseCache();
+      const entry = cache[postId];
+      if (!entry) return null;
+      // Expire after 7 days
+      if (Date.now() - entry.timestamp > 7 * 24 * 60 * 60 * 1000) { delete cache[postId]; localStorage.setItem('rqs_responses', JSON.stringify(cache)); return null; }
+      return entry.data;
+    }
+
     // ── LOAD DATA ──
     async function loadMentions() {
       try {
@@ -194,7 +212,16 @@
           const cols = json.table.cols.map(c => c.label);
           allMentions = json.table.rows.map(r => {
             const obj = {};
-            cols.forEach((c, i) => obj[c] = (r.c[i] && r.c[i].v) || '');
+            cols.forEach((c, i) => {
+              let val = (r.c[i] && r.c[i].v) || '';
+              // Fix Google Sheets Date objects: "Date(2026,2,24,22,39,5)" -> formatted string
+              if (typeof val === 'string' && val.startsWith('Date(')) {
+                const parts = val.replace('Date(', '').replace(')', '').split(',').map(Number);
+                const d = new Date(parts[0], parts[1], parts[2], parts[3] || 0, parts[4] || 0, parts[5] || 0);
+                val = d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour12: false });
+              }
+              obj[c] = val;
+            });
             return obj;
           });
         }
@@ -252,7 +279,7 @@
             <div class="mention-body">${escHtml(body)}${body.length >= 250 ? '...' : ''}</div>
             ${isNonEnglish ? `<div class="translation" id="trans-${i}"><span class="translation-label">Translation for internal use</span><span class="translating">Loading translation...</span></div>` : ''}
             <div class="mention-actions">
-              <button class="btn-generate" onclick="generateResponse(${i}, this)">Generate Response</button>
+              <button class="btn-generate" onclick="generateResponse(${i}, this)" id="btn-gen-${i}">Generate Response</button>
               <a class="btn-link" href="${m.URL}" target="_blank" rel="noopener">View Post</a>
             </div>
             <div class="replies-panel" id="replies-${i}"></div>
@@ -260,22 +287,62 @@
       }).join('');
     }
 
+    // ── RESTORE CACHED RESPONSES ──
+    function restoreCachedResponses() {
+      const filtered = getFilteredMentions();
+      filtered.forEach((m, i) => {
+        const postId = m.ID || m.URL || '';
+        if (!postId) return;
+        const cached = getCachedResponse(postId);
+        if (!cached) return;
+        const panel = document.getElementById(`replies-${i}`);
+        const btn = document.getElementById(`btn-gen-${i}`);
+        if (panel && cached.comments) {
+          const lang = (m.Language || 'en').toLowerCase();
+          const needsReplyTranslation = lang && lang !== 'en';
+          const meta = `
+            <div class="reply-meta">
+              Priority: <strong>${cached.priority || '-'}</strong> &middot;
+              Pain point: <strong>${cached.pain_point || '-'}</strong> &middot;
+              SEO impact: <strong>${cached.seo_impact || '-'}</strong> &middot;
+              ${cached.topic_summary || ''}
+            </div>`;
+          panel.innerHTML = meta + cached.comments.map((c, ci) => `
+            <div class="reply-card">
+              <div class="reply-text">${escHtml(c.text)}</div>
+              <button class="btn-copy" onclick="copyReply(this, ${i}, ${ci})">Copy</button>
+              ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${i}-${ci}"><span class="translating">Translating...</span></div>` : ''}
+            </div>`).join('');
+          panel.classList.add('open');
+          if (btn) btn.textContent = 'Regenerate';
+          if (needsReplyTranslation) {
+            cached.comments.forEach((c, ci) => translateReply(c.text, lang, i, ci));
+          }
+        }
+      });
+    }
+
+    function getFilteredMentions() {
+      return allMentions.filter(m => {
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'high') return (m.Priority || '').toLowerCase() === 'high';
+        return m.Category === currentFilter;
+      });
+    }
+
     function filterBy(f, el) {
       currentFilter = f;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
       renderFeed();
+      restoreCachedResponses();
       translatePosts();
     }
 
     // ── GENERATE RESPONSE ──
     async function generateResponse(idx, btn) {
-      const m = currentFilter === 'all'
-        ? allMentions[idx]
-        : allMentions.filter(m => {
-            if (currentFilter === 'high') return (m.Priority || '').toLowerCase() === 'high';
-            return currentFilter === 'all' || m.Category === currentFilter;
-          })[idx];
+      const filtered = getFilteredMentions();
+      const m = filtered[idx];
 
       btn.disabled = true;
       btn.textContent = 'Generating...';
@@ -319,6 +386,10 @@
               ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${idx}-${ci}"><span class="translating">Translating...</span></div>` : ''}
             </div>`).join('');
 
+          // Save to cache
+          const postId = m.ID || m.URL || '';
+          if (postId) saveResponse(postId, data);
+
           // Translate replies if non-English
           if (needsReplyTranslation) {
             for (let ci = 0; ci < data.comments.length; ci++) {
@@ -334,7 +405,7 @@
       }
 
       btn.disabled = false;
-      btn.textContent = 'Generate Response';
+      btn.textContent = 'Regenerate';
     }
 
     function copyReply(btn, mentionIdx, replyIdx) {
@@ -418,7 +489,7 @@
     }
 
     // ── INIT ──
-    loadMentions().then(() => translatePosts());
+    loadMentions().then(() => { restoreCachedResponses(); translatePosts(); });
   </script>
 </body>
 </html>
