@@ -56,7 +56,7 @@
     .translation-label { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 4px; display: block; font-style: normal; }
     .translating { font-style: italic; color: #94a3b8; font-size: 12px; }
     .reply-translation { font-style: italic; color: #94a3b8; margin-top: 8px; padding: 8px 12px; background: #f1f5f9; border-left: 3px solid #e2e8f0; border-radius: 0 6px 6px 0; font-size: 12px; line-height: 1.5; }
-    .mention-actions { display: flex; gap: 8px; align-items: center; }
+    .mention-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .btn-generate {
       padding: 8px 18px; border-radius: 8px; border: none;
       background: linear-gradient(135deg, #00ba9c, #584aac); color: white;
@@ -70,8 +70,22 @@
       cursor: pointer; text-decoration: none; transition: all 0.15s;
     }
     .btn-link:hover { border-color: #00ba9c; color: #00ba9c; }
+    .btn-toggle {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid #00ba9c;
+      background: #f0fdf8; color: #00896e; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-toggle:hover { background: #e0f7f0; }
+    .btn-toggle .arrow { transition: transform 0.2s; display: inline-block; font-size: 10px; }
+    .btn-toggle.expanded .arrow { transform: rotate(180deg); }
+    .has-responses-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; color: #00896e; text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .has-responses-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ba9c; display: inline-block; }
 
-    /* Replies panel */
+    /* Replies panel - collapsible */
     .replies-panel { display: none; margin-top: 14px; border-top: 1px solid #f1f5f9; padding-top: 14px; }
     .replies-panel.open { display: block; }
     .reply-card {
@@ -125,6 +139,8 @@
       footer { color: #64748b; }
       .translation { background: #0f1a2e; border-left-color: #2d3a52; color: #64748b; }
       .reply-translation { background: #0c1525; border-left-color: #2d3a52; color: #64748b; }
+      .btn-toggle { background: #0d2e28; border-color: #00896e; color: #5eead4; }
+      .btn-toggle:hover { background: #0f3d33; }
     }
   </style>
 </head>
@@ -279,7 +295,14 @@
             <div class="mention-body">${escHtml(body)}${body.length >= 250 ? '...' : ''}</div>
             ${isNonEnglish ? `<div class="translation" id="trans-${i}"><span class="translation-label">Translation for internal use</span><span class="translating">Loading translation...</span></div>` : ''}
             <div class="mention-actions">
-              <button class="btn-generate" onclick="generateResponse(${i}, this)" id="btn-gen-${i}">Generate Response</button>
+              ${hasCached(m) ? `
+                <button class="btn-toggle" onclick="toggleReplies(${i}, this)" id="btn-toggle-${i}">
+                  <span class="has-responses-dot"></span> View 5 responses <span class="arrow">&#9660;</span>
+                </button>
+                <button class="btn-generate" onclick="generateResponse(${i}, this)" id="btn-gen-${i}" style="background:#64748b">Regenerate</button>
+              ` : `
+                <button class="btn-generate" onclick="generateResponse(${i}, this)" id="btn-gen-${i}">Generate Response</button>
+              `}
               <a class="btn-link" href="${m.URL}" target="_blank" rel="noopener">View Post</a>
             </div>
             <div class="replies-panel" id="replies-${i}"></div>
@@ -287,39 +310,68 @@
       }).join('');
     }
 
-    // ── RESTORE CACHED RESPONSES ──
-    function restoreCachedResponses() {
-      const filtered = getFilteredMentions();
-      filtered.forEach((m, i) => {
-        const postId = m.ID || m.URL || '';
-        if (!postId) return;
-        const cached = getCachedResponse(postId);
-        if (!cached) return;
-        const panel = document.getElementById(`replies-${i}`);
-        const btn = document.getElementById(`btn-gen-${i}`);
-        if (panel && cached.comments) {
-          const lang = (m.Language || 'en').toLowerCase();
-          const needsReplyTranslation = lang && lang !== 'en';
-          const meta = `
-            <div class="reply-meta">
-              Priority: <strong>${cached.priority || '-'}</strong> &middot;
-              Pain point: <strong>${cached.pain_point || '-'}</strong> &middot;
-              SEO impact: <strong>${cached.seo_impact || '-'}</strong> &middot;
-              ${cached.topic_summary || ''}
-            </div>`;
-          panel.innerHTML = meta + cached.comments.map((c, ci) => `
-            <div class="reply-card">
-              <div class="reply-text">${escHtml(c.text)}</div>
-              <button class="btn-copy" onclick="copyReply(this, ${i}, ${ci})">Copy</button>
-              ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${i}-${ci}"><span class="translating">Translating...</span></div>` : ''}
-            </div>`).join('');
-          panel.classList.add('open');
-          if (btn) btn.textContent = 'Regenerate';
-          if (needsReplyTranslation) {
-            cached.comments.forEach((c, ci) => translateReply(c.text, lang, i, ci));
-          }
+    // ── CHECK IF POST HAS CACHED RESPONSE ──
+    function hasCached(m) {
+      const postId = m.ID || m.URL || '';
+      return postId && getCachedResponse(postId) !== null;
+    }
+
+    // ── TOGGLE REPLIES DROPDOWN ──
+    function toggleReplies(idx, btn) {
+      const panel = document.getElementById(`replies-${idx}`);
+      if (!panel) return;
+
+      if (panel.classList.contains('open')) {
+        panel.classList.remove('open');
+        btn.classList.remove('expanded');
+        btn.innerHTML = '<span class="has-responses-dot"></span> View 5 responses <span class="arrow">&#9660;</span>';
+      } else {
+        // Populate if empty (first open)
+        if (!panel.innerHTML.trim()) {
+          populateCachedReplies(idx);
         }
-      });
+        panel.classList.add('open');
+        btn.classList.add('expanded');
+        btn.innerHTML = '<span class="has-responses-dot"></span> Hide responses <span class="arrow">&#9660;</span>';
+      }
+    }
+
+    // ── POPULATE CACHED REPLIES INTO PANEL ──
+    function populateCachedReplies(idx) {
+      const filtered = getFilteredMentions();
+      const m = filtered[idx];
+      const postId = m.ID || m.URL || '';
+      const cached = getCachedResponse(postId);
+      if (!cached || !cached.comments) return;
+
+      const panel = document.getElementById(`replies-${idx}`);
+      const lang = (m.Language || 'en').toLowerCase();
+      const needsReplyTranslation = lang && lang !== 'en';
+
+      const meta = `
+        <div class="reply-meta">
+          Priority: <strong>${cached.priority || '-'}</strong> &middot;
+          Pain point: <strong>${cached.pain_point || '-'}</strong> &middot;
+          SEO impact: <strong>${cached.seo_impact || '-'}</strong> &middot;
+          ${cached.topic_summary || ''}
+        </div>`;
+
+      panel.innerHTML = meta + cached.comments.map((c, ci) => `
+        <div class="reply-card">
+          <div class="reply-text">${escHtml(c.text)}</div>
+          <button class="btn-copy" onclick="copyReply(this, ${idx}, ${ci})">Copy</button>
+          ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${idx}-${ci}"><span class="translating">Translating...</span></div>` : ''}
+        </div>`).join('');
+
+      if (needsReplyTranslation) {
+        cached.comments.forEach((c, ci) => translateReply(c.text, lang, idx, ci));
+      }
+    }
+
+    // ── RESTORE CACHED RESPONSES (pre-populate but keep collapsed) ──
+    function restoreCachedResponses() {
+      // No-op: cached responses are now lazy-loaded on toggle click
+      // The hasCached() check in renderFeed already shows the toggle button
     }
 
     function getFilteredMentions() {
@@ -406,6 +458,17 @@
 
       btn.disabled = false;
       btn.textContent = 'Regenerate';
+      btn.style.background = '#64748b';
+
+      // Add toggle button if not already present
+      if (!document.getElementById(`btn-toggle-${idx}`)) {
+        const toggle = document.createElement('button');
+        toggle.className = 'btn-toggle expanded';
+        toggle.id = `btn-toggle-${idx}`;
+        toggle.innerHTML = '<span class="has-responses-dot"></span> Hide responses <span class="arrow" style="transform:rotate(180deg)">&#9660;</span>';
+        toggle.onclick = () => toggleReplies(idx, toggle);
+        btn.parentElement.insertBefore(toggle, btn);
+      }
     }
 
     function copyReply(btn, mentionIdx, replyIdx) {
