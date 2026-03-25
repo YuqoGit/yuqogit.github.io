@@ -278,6 +278,11 @@
           });
         }
 
+        // Filter out empty rows (no title, no body, no URL)
+        allMentions = allMentions.filter(m =>
+          (m.Title && m.Title.trim()) || (m['Post Text'] && m['Post Text'].trim()) || (m.URL && m.URL.trim())
+        );
+
         // Sort newest first
         allMentions.reverse();
       } catch (err) {
