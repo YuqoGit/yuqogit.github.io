@@ -52,6 +52,10 @@
     .mention-title a { color: #1e293b; text-decoration: none; }
     .mention-title a:hover { color: #00ba9c; }
     .mention-body { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 14px; max-height: 80px; overflow: hidden; }
+    .translation { font-style: italic; color: #94a3b8; margin-top: 8px; padding: 10px 14px; background: #f8fafc; border-left: 3px solid #e2e8f0; border-radius: 0 8px 8px 0; font-size: 12px; line-height: 1.6; }
+    .translation-label { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 4px; display: block; font-style: normal; }
+    .translating { font-style: italic; color: #94a3b8; font-size: 12px; }
+    .reply-translation { font-style: italic; color: #94a3b8; margin-top: 8px; padding: 8px 12px; background: #f1f5f9; border-left: 3px solid #e2e8f0; border-radius: 0 6px 6px 0; font-size: 12px; line-height: 1.5; }
     .mention-actions { display: flex; gap: 8px; align-items: center; }
     .btn-generate {
       padding: 8px 18px; border-radius: 8px; border: none;
@@ -119,6 +123,8 @@
       .loading { color: #64748b; }
       .spinner { border-color: #2d3a52; border-top-color: #00ba9c; }
       footer { color: #64748b; }
+      .translation { background: #0f1a2e; border-left-color: #2d3a52; color: #64748b; }
+      .reply-translation { background: #0c1525; border-left-color: #2d3a52; color: #64748b; }
     }
   </style>
 </head>
@@ -226,19 +232,25 @@
         const priority = (m.Priority || 'low').toLowerCase();
         const priorityClass = priority === 'high' ? 'badge-high' : priority === 'medium' ? 'badge-medium' : 'badge-low';
         const body = (m['Post Text'] || '').substring(0, 250);
-        const source = m.Source || m.Subreddit || '';
+        const rawSource = m.Source || m.Subreddit || '';
+        const lang = (m.Language || 'en').toLowerCase();
+        const isNonEnglish = lang && lang !== 'en';
+
+        // Format source label: "Reddit: r/autoflowers" or "Forum: overgrow.com" or "Awario: web"
+        const sourceLabel = formatSource(rawSource);
 
         return `
           <div class="mention" data-idx="${i}">
             <div class="mention-top">
               <span class="badge ${priorityClass}">${priority}</span>
               <span class="badge badge-cat">${m.Category || 'Unknown'}</span>
-              <span class="badge badge-source">${source}</span>
-              ${m.Language ? `<span class="badge badge-source">${m.Language}</span>` : ''}
+              <span class="badge badge-source">${sourceLabel}</span>
+              ${lang ? `<span class="badge badge-source">${lang.toUpperCase()}</span>` : ''}
               <span class="mention-date">${m.Date || ''}</span>
             </div>
             <div class="mention-title"><a href="${m.URL}" target="_blank" rel="noopener">${m.Title || '(no title)'}</a></div>
             <div class="mention-body">${escHtml(body)}${body.length >= 250 ? '...' : ''}</div>
+            ${isNonEnglish ? `<div class="translation" id="trans-${i}"><span class="translation-label">Translation for internal use</span><span class="translating">Loading translation...</span></div>` : ''}
             <div class="mention-actions">
               <button class="btn-generate" onclick="generateResponse(${i}, this)">Generate Response</button>
               <a class="btn-link" href="${m.URL}" target="_blank" rel="noopener">View Post</a>
@@ -253,6 +265,7 @@
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
       renderFeed();
+      translatePosts();
     }
 
     // ── GENERATE RESPONSE ──
@@ -296,11 +309,22 @@
               ${data.topic_summary || ''}
             </div>`;
 
+          const replyLang = (m.Language || 'en').toLowerCase();
+          const needsReplyTranslation = replyLang && replyLang !== 'en';
+
           panel.innerHTML = meta + data.comments.map((c, ci) => `
             <div class="reply-card">
               <div class="reply-text">${escHtml(c.text)}</div>
               <button class="btn-copy" onclick="copyReply(this, ${idx}, ${ci})">Copy</button>
+              ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${idx}-${ci}"><span class="translating">Translating...</span></div>` : ''}
             </div>`).join('');
+
+          // Translate replies if non-English
+          if (needsReplyTranslation) {
+            for (let ci = 0; ci < data.comments.length; ci++) {
+              translateReply(data.comments[ci].text, replyLang, idx, ci);
+            }
+          }
         } else {
           panel.innerHTML = '<div class="loading">No replies generated. Check the webhook workflow.</div>';
         }
@@ -323,11 +347,78 @@
     }
 
     function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── SOURCE FORMATTING ──
+    function formatSource(raw) {
+      if (!raw) return 'Unknown';
+      const s = raw.toLowerCase();
+
+      // Awario sources
+      if (s.startsWith('awario:')) {
+        const type = s.replace('awario:', '');
+        return 'Awario: ' + type;
+      }
+
+      // Known Discourse forums
+      const forums = ['overgrow.com', 'forum.cannabisanbauen.net', 'future4200.com', 'social.growithjane.com'];
+      if (forums.some(f => s.includes(f))) {
+        return 'Forum: ' + raw;
+      }
+
+      // Reddit subreddits
+      return 'Reddit: r/' + raw;
+    }
+
+    // ── TRANSLATE A SINGLE REPLY ──
+    async function translateReply(text, fromLang, mentionIdx, replyIdx) {
+      const el = document.getElementById(`reply-trans-${mentionIdx}-${replyIdx}`);
+      if (!el) return;
+      try {
+        const encoded = encodeURIComponent(text.substring(0, 2000));
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=en&dt=t&q=${encoded}`);
+        const data = await res.json();
+        const translated = data[0].map(s => s[0]).join('');
+        el.innerHTML = `<em style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8">Translation for internal use (${fromLang.toUpperCase()} &rarr; EN)</em><br>${escHtml(translated)}`;
+      } catch (e) {
+        el.innerHTML = '<em style="color:#94a3b8">Translation unavailable</em>';
+      }
+    }
+
+    // ── AUTO-TRANSLATE NON-ENGLISH POSTS ──
+    async function translatePosts() {
+      const mentions = currentFilter === 'all' ? allMentions : allMentions.filter(m => {
+        if (currentFilter === 'high') return (m.Priority || '').toLowerCase() === 'high';
+        return m.Category === currentFilter;
+      });
+
+      for (let i = 0; i < mentions.length; i++) {
+        const m = mentions[i];
+        const lang = (m.Language || 'en').toLowerCase();
+        if (!lang || lang === 'en') continue;
+
+        const el = document.getElementById(`trans-${i}`);
+        if (!el) continue;
+
+        const text = (m.Title || '') + '. ' + (m['Post Text'] || '');
+        if (text.trim().length < 5) continue;
+
+        try {
+          // Use a free translation approach: Google Translate via unofficial endpoint
+          const encoded = encodeURIComponent(text.substring(0, 1000));
+          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=en&dt=t&q=${encoded}`);
+          const data = await res.json();
+          const translated = data[0].map(s => s[0]).join('');
+          el.innerHTML = `<span class="translation-label">Translation for internal use (${lang.toUpperCase()} &rarr; EN)</span>${escHtml(translated)}`;
+        } catch (e) {
+          el.innerHTML = `<span class="translation-label">Translation for internal use</span>Translation unavailable`;
+        }
+      }
     }
 
     // ── INIT ──
-    loadMentions();
+    loadMentions().then(() => translatePosts());
   </script>
 </body>
 </html>
