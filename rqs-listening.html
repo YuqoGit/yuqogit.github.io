@@ -176,28 +176,64 @@
     // ── CONFIG ──
     const SHEET_ID = '1xPeMCSrCJKFr1shpGx_6aq8dtjPxKlAu1Cni2uV13uQ';
     const SHEET_NAME = 'RQS_Sheet_Template_Sheet1';
-    const API_KEY = ''; // TODO: Add Google Sheets API key for public read
+    const RESPONSES_SHEET = 'Responses';
+    const API_KEY = '';
     const WEBHOOK_URL = 'https://contentum.app.n8n.cloud/webhook/rqs-generate-response';
 
     let allMentions = [];
+    let allResponses = {}; // keyed by Post ID
     let currentFilter = 'all';
 
-    // ── RESPONSE CACHE (localStorage) ──
-    function getResponseCache() {
-      try { return JSON.parse(localStorage.getItem('rqs_responses') || '{}'); } catch { return {}; }
+    // ── LOAD RESPONSES FROM GOOGLE SHEET ──
+    async function loadResponses() {
+      try {
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${RESPONSES_SHEET}`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+        const cols = json.table.cols.map(c => c.label);
+        const rows = json.table.rows.map(r => {
+          const obj = {};
+          cols.forEach((c, i) => {
+            let val = (r.c[i] && r.c[i].v) || '';
+            if (typeof val === 'string' && val.startsWith('Date(')) {
+              const parts = val.replace('Date(', '').replace(')', '').split(',').map(Number);
+              const d = new Date(parts[0], parts[1], parts[2], parts[3] || 0, parts[4] || 0, parts[5] || 0);
+              val = d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour12: false });
+            }
+            obj[c] = val;
+          });
+          return obj;
+        });
+
+        // Index by Post ID -- keep latest response per post
+        allResponses = {};
+        rows.forEach(r => {
+          const id = r['Post ID'];
+          if (id) allResponses[id] = r;
+        });
+      } catch (e) {
+        console.log('No responses sheet yet or not shared:', e.message);
+      }
     }
-    function saveResponse(postId, data) {
-      const cache = getResponseCache();
-      cache[postId] = { data, timestamp: Date.now() };
-      localStorage.setItem('rqs_responses', JSON.stringify(cache));
-    }
+
     function getCachedResponse(postId) {
-      const cache = getResponseCache();
-      const entry = cache[postId];
-      if (!entry) return null;
-      // Expire after 7 days
-      if (Date.now() - entry.timestamp > 7 * 24 * 60 * 60 * 1000) { delete cache[postId]; localStorage.setItem('rqs_responses', JSON.stringify(cache)); return null; }
-      return entry.data;
+      const r = allResponses[postId];
+      if (!r) return null;
+      return {
+        priority: r.Priority || '',
+        topic_summary: r['Topic Summary'] || '',
+        pain_point: r['Pain Point'] || '',
+        suggested_action: r['Suggested Action'] || '',
+        seo_impact: r['SEO Impact'] || '',
+        comments: [
+          { text: r['Reply 1'] || '' },
+          { text: r['Reply 2'] || '' },
+          { text: r['Reply 3'] || '' },
+          { text: r['Reply 4'] || '' },
+          { text: r['Reply 5'] || '' }
+        ].filter(c => c.text)
+      };
     }
 
     // ── LOAD DATA ──
@@ -244,7 +280,6 @@
 
         // Sort newest first
         allMentions.reverse();
-        renderFeed();
       } catch (err) {
         document.getElementById('feed').innerHTML =
           `<div class="loading">Failed to load data. Make sure the Google Sheet is shared as "Anyone with the link can view".</div>`;
@@ -438,9 +473,18 @@
               ${needsReplyTranslation ? `<div class="reply-translation" id="reply-trans-${idx}-${ci}"><span class="translating">Translating...</span></div>` : ''}
             </div>`).join('');
 
-          // Save to cache
+          // Update local responses cache (webhook also saves to sheet)
           const postId = m.ID || m.URL || '';
-          if (postId) saveResponse(postId, data);
+          if (postId) {
+            allResponses[postId] = {
+              'Priority': data.priority, 'Topic Summary': data.topic_summary,
+              'Pain Point': data.pain_point, 'Suggested Action': data.suggested_action,
+              'SEO Impact': data.seo_impact,
+              'Reply 1': data.comments[0]?.text, 'Reply 2': data.comments[1]?.text,
+              'Reply 3': data.comments[2]?.text, 'Reply 4': data.comments[3]?.text,
+              'Reply 5': data.comments[4]?.text
+            };
+          }
 
           // Translate replies if non-English
           if (needsReplyTranslation) {
@@ -552,7 +596,10 @@
     }
 
     // ── INIT ──
-    loadMentions().then(() => { restoreCachedResponses(); translatePosts(); });
+    Promise.all([loadMentions(), loadResponses()]).then(() => {
+      renderFeed();
+      translatePosts();
+    });
   </script>
 </body>
 </html>
